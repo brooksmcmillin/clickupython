@@ -2,21 +2,6 @@ from typing import Optional, List, Any
 
 from pydantic import BaseModel, ValidationError, validator, Field
 
-import json
-
-
-class Priority(BaseModel):
-    priority: Any
-    color: str
-
-
-class Status(BaseModel):
-    status: str = None
-    color: str = None
-
-    hide_label: bool = None
-
-
 class StatusElement(BaseModel):
     id: Optional[str]
     status: str
@@ -27,13 +12,13 @@ class StatusElement(BaseModel):
     type: str
 
 
-class Asssignee(BaseModel):
-    id: str = None
-    color: str = None
-    username: str = None
-    initials: str = None
+class Assignee(BaseModel):
+    id: Optional[str] = None
+    color: Optional[str] = None
+    username: Optional[str] = None
+    initials: Optional[str] = None
 
-    profilePicture: str = None
+    profilePicture: Optional[str] = None
 
 
 class ListFolder(BaseModel):
@@ -44,34 +29,51 @@ class ListFolder(BaseModel):
 
     access: bool
 
+class Status(BaseModel):
+    id: Optional[str] = None
+    status: Optional[str] = None
+    color: Optional[str] = None
+
+    orderindex: Optional[int] = None
+
+    type: Optional[str] = None
+
+class Priority(BaseModel):
+    id: Optional[int] = None
+
+    priority: Any = None
+    color: Optional[str] = None
+
+    orderindex: Optional[str] = None
+
 
 class SingleList(BaseModel):
-    id: str = None
-    name: str = None
+    id: Optional[str] = None
+    name: Optional[str] = None
 
-    deleted: bool = None
+    deleted: Optional[bool] = None
 
-    archived: bool = None
+    archived: Optional[bool] = None
 
-    orderindex: int = None
+    orderindex: Optional[int] = None
 
-    override_statuses: bool = None
+    override_statuses: Optional[bool] = None
 
     priority: Optional[Priority] = None
 
-    assignee: Asssignee = None
-    due_date: str = None
-    start_date: str = None
+    assignee: Optional[Assignee] = None
+    due_date: Optional[str] = None
+    start_date: Optional[str] = None
 
-    folder: ListFolder = None
+    folder: Optional[ListFolder] = None
 
-    space: ListFolder = None
+    space: Optional[ListFolder] = None
 
     statuses: Optional[List[StatusElement]] = None
 
-    inbound_address: str = None
+    inbound_address: Optional[str] = None
 
-    permission_level: str = None
+    permission_level: Optional[str] = None
 
     content: Optional[str] = None
 
@@ -90,7 +92,7 @@ class SingleList(BaseModel):
 
 
 class AllLists(BaseModel):
-    lists: List[SingleList] = None
+    lists: Optional[List[SingleList]] = None
 
     # return a list of lists
 
@@ -99,29 +101,29 @@ class AllLists(BaseModel):
 
 
 class ChecklistItem(BaseModel):
-    id: str = None
-    name: str = None
+    id: Optional[str] = None
+    name: Optional[str] = None
 
-    orderindex: int = None
+    orderindex: Optional[int] = None
 
-    assignee: Optional[Asssignee]
+    assignee: Optional[Assignee]
 
 
 class Checklist(BaseModel):
     id: Optional[str]
 
-    task_id: str = None
-    name: str = None
+    task_id: Optional[str] = None
+    name: Optional[str] = None
 
-    orderindex: int = None
+    orderindex: Optional[int] = None
 
-    resolved: int = None
+    resolved: Optional[int] = None
 
-    unresolved: int = None
+    unresolved: Optional[int] = None
 
-    items: List[ChecklistItem] = None
+    items: Optional[List[ChecklistItem]] = None
 
-    def add_item(self, client_instance, name: str, assignee: str = None):
+    def add_item(self, client_instance, name: str, assignee: Optional[str] = None):
         return client_instance.create_checklist_item(
             self.id, name=name, assignee=assignee
         )
@@ -155,15 +157,13 @@ class Attachment(BaseModel):
 
 
 class User(BaseModel):
-    id: str = None
-    username: str = None
-    initials: str = None
-    email: str = None
-    color: str = None
-
-    profilePicture: str = None
-
+    id: Optional[str] = None
+    username: Optional[str] = None
     initials: Optional[str] = None
+    email: Optional[str] = None
+    color: Optional[str] = None
+
+    profilePicture: Optional[str] = None
 
     role: Optional[int] = None
 
@@ -177,43 +177,43 @@ class User(BaseModel):
 
 
 class AssignedBy(BaseModel):
-    id: str = None
-    username: str = None
-    initials: str = None
-    email: str = None
-    color: str = None
-    profile_picture: str = None
+    id: Optional[str] = None
+    username: Optional[str] = None
+    initials: Optional[str] = None
+    email: Optional[str] = None
+    color: Optional[str] = None
+    profile_picture: Optional[str] = None
 
 
 class CommentComment(BaseModel):
-    text: str = None
+    text: Optional[str] = None
 
 
 class Comment(BaseModel):
-    id: str = None
+    id: Optional[str] = None
 
-    comment: List[CommentComment] = None
+    comment: Optional[List[CommentComment]] = None
 
-    comment_text: str = None
+    comment_text: Optional[str] = None
 
-    user: AssignedBy = None
+    user: Optional[AssignedBy] = None
 
-    resolved: bool = None
+    resolved: Optional[bool] = None
 
-    assignee: AssignedBy = None
+    assignee: Optional[AssignedBy] = None
 
-    assigned_by: AssignedBy = None
+    assigned_by: Optional[AssignedBy] = None
 
-    reactions: List[Any] = None
-    date: str = None
-    hist_id: str = None
+    reactions: Optional[List[Any]] = None
+    date: Optional[str] = None
+    hist_id: Optional[str] = None
 
     def build_comment(self):
         return Comment(**self)
 
 
 class Comments(BaseModel):
-    comments: List[Comment] = None
+    comments: Optional[List[Comment]] = None
 
     def __iter__(self):
         return iter(self.comments)
@@ -223,10 +223,10 @@ class Comments(BaseModel):
 
 
 class Creator(BaseModel):
-    id: int = None
-    username: str = None
-    color: str = None
-    profile_picture: str = None
+    id: Optional[int] = None
+    username: Optional[str] = None
+    color: Optional[str] = None
+    profile_picture: Optional[str] = None
 
 
 class Option(BaseModel):
@@ -254,33 +254,33 @@ class TypeConfig(BaseModel):
 
 
 class CustomItems:
-    enabled: bool = None
+    enabled: Optional[bool] = None
 
 
 class DueDates(BaseModel):
-    enabled: bool = None
+    enabled: Optional[bool] = None
 
-    start_date: bool = None
+    start_date: Optional[bool] = None
 
-    remap_due_dates: bool = None
+    remap_due_dates: Optional[bool] = None
 
-    remap_closed_due_date: bool = None
+    remap_closed_due_date: Optional[bool] = None
 
 
 class CustomField(BaseModel):
-    id: str = None
-    name: str = None
+    id: Optional[str] = None
+    name: Optional[str] = None
 
-    type: str = None
+    type: Optional[str] = None
 
-    type_config: TypeConfig = None
-    date_created: str = None
+    type_config: Optional[TypeConfig] = None
+    date_created: Optional[str] = None
 
-    hide_from_guests: bool = None
+    hide_from_guests: Optional[bool] = None
 
     value: Optional[Any] = None
 
-    required: bool = None
+    required: Optional[bool] = None
 
 
 class TimeTracking(BaseModel):
@@ -309,11 +309,6 @@ class Milestones(BaseModel):
 
 class Emails(BaseModel):
     enabled: bool = False
-
-
-class CustomItems(BaseModel):
-    enabled: bool = False
-
 
 class MultipleAssignees(BaseModel):
     enabled: bool = False
@@ -348,11 +343,11 @@ class PortfoliosStatus(BaseModel):
 
 
 class Features(BaseModel):
-    due_dates: DueDates = None
+    due_dates: Optional[DueDates] = None
 
-    multiple_assignees: MultipleAssignees = None
+    multiple_assignees: Optional[MultipleAssignees] = None
 
-    sprints: Sprints = None
+    sprints: Optional[Sprints] = None
 
     start_date: bool = False
 
@@ -372,19 +367,19 @@ class Features(BaseModel):
 
     remap_dependencies: Optional[RemapDependenciesStatus]
 
-    dependency_warning: DependencyWarning = None
+    dependency_warning: Optional[DependencyWarning] = None
 
     portfolios: Optional[PortfoliosStatus]
 
-    points: Points = None
+    points: Optional[Points] = None
 
-    custom_items: CustomItems = None
+    custom_items: Optional[CustomItems] = None
 
-    zoom: Zoom = None
+    zoom: Optional[Zoom] = None
 
-    milestones: Milestones = None
+    milestones: Optional[Milestones] = None
 
-    emails: Emails = None
+    emails: Optional[Emails] = None
 
     class Config:
         validate_assignment = True
@@ -494,7 +489,7 @@ class Space(BaseModel):
 
 
 class Spaces(BaseModel):
-    spaces: List[Space] = None
+    spaces: Optional[List[Space]] = None
 
     def __iter__(self):
         return iter(self.spaces)
@@ -504,10 +499,10 @@ class Spaces(BaseModel):
 
 
 class Folder(BaseModel):
-    id: str = None
-    name: str = None
+    id: Optional[str] = None
+    name: Optional[str] = None
 
-    orderindex: int = None
+    orderindex: Optional[int] = None
 
     override_statuses: bool = False
 
@@ -515,7 +510,7 @@ class Folder(BaseModel):
 
     space: Optional[Space] = None
 
-    task_count: int = None
+    task_count: Optional[int] = None
 
     lists: List[SingleList] = []
 
@@ -529,38 +524,19 @@ class Folder(BaseModel):
 
 
 class Folders(BaseModel):
-    folders: List[Folder] = None
+    folders: Optional[List[Folder]] = None
 
     def build_folders(self):
         return Folders(**self)
 
 
-class Priority(BaseModel):
-    id: int = None
-
-    priority: Any = None
-    color: str = None
-
-    orderindex: str = None
-
-
-class Status(BaseModel):
-    id: Optional[str] = None
-    status: str = None
-    color: str = None
-
-    orderindex: int = None
-
-    type: str = None
-
-
 class ClickupList(BaseModel):
-    id: str = None
+    id: Optional[str] = None
 
 
 # class Folder(BaseModel):
 
-#     id: str = None
+#     id: Optional[str] = None
 
 
 class Task(BaseModel):
@@ -580,7 +556,7 @@ class Task(BaseModel):
 
     creator: Optional[Creator] = None
 
-    assignees: Optional[List[Asssignee]] = None
+    assignees: Optional[List[Assignee]] = None
 
     task_checklists: Optional[List[Any]] = Field(None, alias="checklists")
 
@@ -605,8 +581,8 @@ class Task(BaseModel):
     def build_task(self):
         return Task(**self)
 
-    def delete(self):
-        client.ClickUpClient.delete_task(self, self.id)
+    def delete(self, client_instance):
+        client_instance.delete_task(self, self.id)
 
     def upload_attachment(self, client_instance, file_path: str):
         return client_instance.upload_attachment(self.id, file_path)
@@ -614,14 +590,14 @@ class Task(BaseModel):
     def update(
         self,
         client_instance,
-        name: str = None,
-        description: str = None,
-        status: str = None,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        status: Optional[str] = None,
         priority: Any = None,
-        time_estimate: int = None,
-        archived: bool = None,
-        add_assignees: List[str] = None,
-        remove_assignees: List[int] = None,
+        time_estimate: Optional[int] = None,
+        archived: Optional[bool] = None,
+        add_assignees: Optional[List[str]] = None,
+        remove_assignees: Optional[List[int]] = None,
     ):
         return client_instance.update_task(
             self.id,
@@ -639,7 +615,7 @@ class Task(BaseModel):
         self,
         client_instance,
         comment_text: str,
-        assignee: str = None,
+        assignee: Optional[str] = None,
         notify_all: bool = True,
     ):
         return client_instance.create_task_comment(
@@ -651,7 +627,7 @@ class Task(BaseModel):
 
 
 class Tasks(BaseModel):
-    tasks: List[Task] = None
+    tasks: Optional[List[Task]] = None
 
     def __iter__(self):
         return iter(self.tasks)
@@ -660,34 +636,12 @@ class Tasks(BaseModel):
         return Tasks(**self)
 
 
-class User(BaseModel):
-    id: str = None
-    username: str = None
-    initials: str = None
-    email: str = None
-    color: str = None
-
-    profilePicture: str = None
-
-    initials: Optional[str] = None
-
-    role: Optional[int] = None
-
-    custom_role: Optional[None] = None
-
-    last_active: Optional[str] = None
-
-    date_joined: Optional[str] = None
-
-    date_invited: Optional[str] = None
-
-
 class InvitedBy(BaseModel):
-    id: str = None
-    username: str = None
-    color: str = None
-    email: str = None
-    initials: str = None
+    id: Optional[str] = None
+    username: Optional[str] = None
+    color: Optional[str] = None
+    email: Optional[str] = None
+    initials: Optional[str] = None
     profile_picture: None = None
 
 
@@ -698,7 +652,7 @@ class Member(BaseModel):
 
 
 class Members(BaseModel):
-    members: List[User] = None
+    members: Optional[List[User]] = None
 
     def __iter__(self):
         return iter(self.members)
@@ -708,17 +662,17 @@ class Members(BaseModel):
 
 
 class Team(BaseModel):
-    id: str = None
-    name: str = None
-    color: str = None
+    id: Optional[str] = None
+    name: Optional[str] = None
+    color: Optional[str] = None
 
-    avatar: str = None
+    avatar: Optional[str] = None
 
-    members: List[Member] = None
+    members: Optional[List[Member]] = None
 
 
 class Teams(BaseModel):
-    teams: List[Team] = None
+    teams: Optional[List[Team]] = None
 
     def __iter__(self):
         return iter(self.teams)
@@ -728,35 +682,35 @@ class Teams(BaseModel):
 
 
 class Goal(BaseModel):
-    id: str = None
-    name: str = None
-    team_id: int = None
-    date_created: str = None
-    start_date: str = None
-    due_date: str = None
-    description: str = None
+    id: Optional[str] = None
+    name: Optional[str] = None
+    team_id: Optional[int] = None
+    date_created: Optional[str] = None
+    start_date: Optional[str] = None
+    due_date: Optional[str] = None
+    description: Optional[str] = None
 
-    private: bool = None
+    private: Optional[bool] = None
 
-    archived: bool = None
-    creator: int = None
-    color: str = None
+    archived: Optional[bool] = None
+    creator: Optional[int] = None
+    color: Optional[str] = None
 
-    pretty_id: int = None
+    pretty_id: Optional[int] = None
 
-    multiple_owners: bool = None
-    folder_id: str = None
+    multiple_owners: Optional[bool] = None
+    folder_id: Optional[str] = None
 
-    members: List[User] = None
+    members: Optional[List[User]] = None
 
-    owners: List[User] = None
+    owners: Optional[List[User]] = None
 
-    key_results: List[Any] = None
-    percent_completed: int = None
+    key_results: Optional[List[Any]] = None
+    percent_completed: Optional[int] = None
 
-    history: List[Any] = None
+    history: Optional[List[Any]] = None
 
-    pretty_url: str = None
+    pretty_url: Optional[str] = None
 
     def build_goal(self):
         return Goal(**self)
@@ -772,8 +726,8 @@ class Goals(BaseModel):
 
 
 class GoalsList(BaseModel):
-    goals: List[Goal] = None
-    folders: List[Folder] = None
+    goals: Optional[List[Goal]] = None
+    folders: Optional[List[Folder]] = None
 
     def __iter__(self):
         return iter(self.goals)
@@ -783,18 +737,18 @@ class GoalsList(BaseModel):
 
 
 class Tag(BaseModel):
-    name: str = None
+    name: Optional[str] = None
 
-    tag_fg: str = None
+    tag_fg: Optional[str] = None
 
-    tag_bg: str = None
+    tag_bg: Optional[str] = None
 
     def build_tag(self):
         return Tag(**self)
 
 
 class Tags(BaseModel):
-    tags: List[Tag] = None
+    tags: Optional[List[Tag]] = None
 
     def __iter__(self):
         return iter(self.tags)
@@ -829,15 +783,15 @@ class SharedHierarchy(BaseModel):
 
 class TimeTrackingData(BaseModel):
     id: str = ""
-    task: Task = None
+    task: Optional[Task] = None
     wid: str = ""
-    user: User = None
+    user: Optional[User] = None
     billable: bool = False
     start: str = ""
     end: str = ""
-    duration: int = None
+    duration: Optional[int] = None
     description: str = ""
-    tags: List[Tag] = None
+    tags: Optional[List[Tag]] = None
     source: str = ""
     at: str = ""
 
@@ -846,7 +800,7 @@ class TimeTrackingData(BaseModel):
 
 
 class TimeTrackingDataList(BaseModel):
-    data: List[TimeTrackingData] = None
+    data: Optional[List[TimeTrackingData]] = None
 
     def build_data(self):
         return TimeTrackingDataList(**self)
@@ -856,7 +810,7 @@ class TimeTrackingDataList(BaseModel):
 
 
 class TimeTrackingDataSingle(BaseModel):
-    data: TimeTrackingData = None
+    data: Optional[TimeTrackingData] = None
 
     def build_data(self):
         return TimeTrackingDataSingle(**self)
