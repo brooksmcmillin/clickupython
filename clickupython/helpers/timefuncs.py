@@ -1,7 +1,8 @@
-from word2number import w2n
-from timefhuman import timefhuman
+from word2number import w2n # type: ignore
+from timefhuman import timefhuman # type: ignore
 from datetime import datetime
-from clickupython import exceptions
+from clickupython import exceptions 
+from typing import Any
 import pendulum as time
 
 SCALES = {
@@ -42,7 +43,7 @@ def fuzzy_time_to_unix(text: str):
         )
 
 
-def fuzzy_time_to_seconds(text: any) -> int:
+def fuzzy_time_to_seconds(text: Any) -> int:
     """
     Converts a human readable duration of time into seconds
 
@@ -53,7 +54,7 @@ def fuzzy_time_to_seconds(text: any) -> int:
 
     # Check if the input is a timestamp
     try:
-        return str(int(text))
+        return int(text)
 
     # Not a timestamp, so let's interpret the fuzzy string
     except ValueError:
