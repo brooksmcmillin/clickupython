@@ -23,7 +23,7 @@ SCALES = {
 }
 
 
-def fuzzy_time_to_unix(text: str):
+def fuzzy_time_to_unix(text: str) -> str:
     """
     Converts a human readable time and date to a Unix timestamp
 

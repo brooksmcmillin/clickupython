@@ -1,7 +1,7 @@
-import urllib
-from urllib.parse import urlparse
 import posixpath
+from urllib.parse import urljoin
 
-
-def url_join(host, model, *additional_path):
-    return urllib.parse.urljoin(host, posixpath.join(model, *additional_path))
+def url_join(host: str, model: str, *additional_path: str) -> str:
+    print(f"Joining: {host}::{model}::{additional_path}")
+    suffix = "/".join([x for x in additional_path if x is not None])
+    return urljoin(host, posixpath.join(model, suffix))
