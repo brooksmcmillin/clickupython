@@ -6,7 +6,7 @@ from clickupython import exceptions
 
 class TestTimeFuncs:
     @pytest.mark.timefuncs
-    def test_fuzzy_time_to_unix(self):
+    def test_fuzzy_time_to_unix(self) -> None:
 
         from datetime import timezone
 
@@ -22,7 +22,7 @@ class TestTimeFuncs:
             t = timefuncs.fuzzy_time_to_unix("sdfsdfsdf")
 
     @pytest.mark.timefuncs
-    def test_fuzzy_time_to_seconds(self):
+    def test_fuzzy_time_to_seconds(self) -> None:
 
         t = timefuncs.fuzzy_time_to_seconds("5 hours")
         t2 = timefuncs.fuzzy_time_to_seconds("6 hours")
@@ -31,4 +31,4 @@ class TestTimeFuncs:
         assert t2 == 21600
 
         t = timefuncs.fuzzy_time_to_seconds("1632603494")
-        assert t == "1632603494"
+        assert t == 1632603494

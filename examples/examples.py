@@ -12,23 +12,15 @@ t = c.create_task("LIST_ID", name="Test Task", due_date="march 2 2021")
 
 
 """
-	Here's two ways to get all the comments for a given task ID.
+	Here's the way to get all the comments for a given task ID.
 """
 
-# Example 1
 c = client.ClickUpClient("YOUR_API_KEY")
 comments = c.get_task_comments("TASK_ID")
 
 for comment in comments:
+    assert comment.user is not None
     print(comment.user.id)
-    print(comment.comment_text)
-
-# Example 2
-c = client.ClickUpClient("YOUR_API_KEY")
-task = c.get_task("TASK_ID")
-comments = task.get_comments(c)
-
-for comment in comments:
     print(comment.comment_text)
 
 
@@ -42,19 +34,10 @@ for team in teams:
     print(team.name)
 
 """
-	Here's two ways to create a checklist and add checklist items to it.
+	Here's the way to create a checklist and add checklist items to it.
 """
 
-# Example 1
+# Example
 c = client.ClickUpClient("YOUR_API_KEY")
 checklist = c.create_checklist("TASK_ID", "Test Checklist")
-checklist_with_item = c.create_checklist_item(checklist.id, "Test Checklist item")
-
-# Example 2
-c = client.ClickUpClient("YOUR_API_KEY")
-checklist = c.create_checklist("1gu4f5g", "Test Checklist")
-
-item_list = ["Item1", "Item2", "Item3"]
-
-for item in item_list:
-    checklist.add_item(c, item)
+checklist_with_item = c.create_checklist_item(checklist.id, "Test Checklist item") # type: ignore

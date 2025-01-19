@@ -1,33 +1,44 @@
-from typing import Optional, List, Any
+from abc import abstractmethod
+from typing import (
+    Optional,
+    List,
+    Any,
+    Generator,
+    Iterator,
+    Sequence,
+    TypeVar,
+    Generic,
+    Type,
+)
 
-from pydantic import BaseModel, ValidationError, validator, Field
-
-class StatusElement(BaseModel):
-    id: Optional[str]
-    status: str
-
-    orderindex: int
-    color: str
-
-    type: str
-
-
-class Assignee(BaseModel):
-    id: Optional[str] = None
-    color: Optional[str] = None
-    username: Optional[str] = None
-    initials: Optional[str] = None
-
-    profilePicture: Optional[str] = None
+from pydantic import BaseModel, Field
 
 
-class ListFolder(BaseModel):
-    id: str
-    name: str
+# Single entry dict that appears a lot
+class EnabledBool(BaseModel):
+    enabled: bool = False
 
-    hidden: Optional[bool]
 
-    access: bool
+# Class to hold a list of BaseModels
+T = TypeVar("T")  # Define type variable T
+
+
+class BaseModelList(Generic[T]):
+    def __init__(self, **kwargs: dict[str, dict[str, Any]]) -> None:
+        self.items: list[T] = []
+
+        for json_item in kwargs[next(iter(kwargs))]:
+            self.items.append(self.create_item(json_item))
+
+    @abstractmethod
+    def create_item(self, json_obj: dict[str, Any]) -> T: ...
+
+    def __iter__(self) -> Iterator[T]:
+        return iter(self.items)
+
+    def __getitem__(self, index: int) -> T:
+        return self.items[index]
+
 
 class Status(BaseModel):
     id: Optional[str] = None
@@ -38,6 +49,7 @@ class Status(BaseModel):
 
     type: Optional[str] = None
 
+
 class Priority(BaseModel):
     id: Optional[int] = None
 
@@ -47,57 +59,120 @@ class Priority(BaseModel):
     orderindex: Optional[str] = None
 
 
-class SingleList(BaseModel):
-    id: Optional[str] = None
+# Reference: https://developer.clickup.com/reference/getspaces
+class DueDates(BaseModel):
+    # Required Fields
+    enabled: bool
+    start_date: bool
+    remap_due_dates: bool
+    remap_closed_due_date: bool
+
+
+class TimeTracking(BaseModel):
+    enabled: bool = False
+    harvest: bool = False
+    rollup: bool = False
+
+
+class TagsStatus(BaseModel):
+    enabled: bool = False
+
+
+class TimeEstimateStatus(BaseModel):
+    enabled: bool = False
+
+
+class ChecklistsStatus(BaseModel):
+    enabled: bool = False
+
+
+class CustomFieldsStatus(BaseModel):
+    enabled: bool = False
+
+
+class RemapDependenciesStatus(BaseModel):
+    enabled: bool = False
+
+
+class DependencyWarning(BaseModel):
+    enabled: bool = False
+
+
+class PortfoliosStatus(BaseModel):
+    enabled: bool = False
+
+
+# Reference: https://developer.clickup.com/reference/getspaces
+class Features(BaseModel):
+    # Required Fields
+    due_dates: DueDates
+    time_tracking: TimeTracking
+    tags: TagsStatus
+    time_estimates: TimeEstimateStatus
+    checklists: Optional[ChecklistsStatus] = None  # Says required, but not in response?
+
+    # Optional Fields
+    custom_fields: Optional[CustomFieldsStatus] = None
+    remap_dependencies: Optional[RemapDependenciesStatus] = None
+    dependency_warning: Optional[DependencyWarning] = None
+    portfolios: Optional[PortfoliosStatus] = None
+
+
+# Reference: https://developer.clickup.com/reference/getauthorizedteams
+class User(BaseModel):
+    # Required Fields
+    id: int
+    username: str
+    color: str
+    profilePicture: Optional[str]
+
+    # Optional Fields
+    initials: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[int] = None
+    custom_role: Optional[None] = None
+    last_active: Optional[str] = None
+    date_joined: Optional[str] = None
+    date_invited: Optional[str] = None
+
+
+# Reference: https://developer.clickup.com/reference/getspaces
+class Space(BaseModel):
+    id: str
     name: Optional[str] = None
 
-    deleted: Optional[bool] = None
-
+    private: Optional[bool] = None
+    statuses: Optional[list[Status]] = None
+    multiple_assignees: Optional[bool] = None
+    features: Optional[Features] = None
+    color: Optional[str] = None
+    access: Optional[bool] = None
+    admin_can_manage: Optional[bool] = None
     archived: Optional[bool] = None
+    members: Optional[list[User]] = None
 
+
+class Spaces(BaseModelList[Space]):
+    def create_item(self, json_obj: dict[str, Any]) -> Space:
+        return Space(**json_obj)
+
+
+# Reference: https://developer.clickup.com/reference/getfolder
+class Folder(BaseModel):
+    id: str
+    name: str
     orderindex: Optional[int] = None
-
     override_statuses: Optional[bool] = None
-
-    priority: Optional[Priority] = None
-
-    assignee: Optional[Assignee] = None
-    due_date: Optional[str] = None
-    start_date: Optional[str] = None
-
-    folder: Optional[ListFolder] = None
-
-    space: Optional[ListFolder] = None
-
-    statuses: Optional[List[StatusElement]] = None
-
-    inbound_address: Optional[str] = None
-
-    permission_level: Optional[str] = None
-
-    content: Optional[str] = None
-
-    status: Optional[Status] = None
-
+    hidden: bool
+    space: Optional[Space] = None
     task_count: Optional[int] = None
-
-    start_date_time: Optional[str] = None
-
-    due_date_time: Optional[bool] = None
-
-    # return a single list
-
-    def build_list(self):
-        return SingleList(**self)
+    lists: Optional[list[dict[str, Any]]] = None
 
 
-class AllLists(BaseModel):
-    lists: Optional[List[SingleList]] = None
-
-    # return a list of lists
-
-    def build_lists(self):
-        return AllLists(**self)
+# Reference: https://developer.clickup.com/reference/getfolders
+class Folders(BaseModelList[Folder]):
+    def create_item(self, json_obj: dict[str, Any]) -> Folder:
+        return Folder(**json_obj)
 
 
 class ChecklistItem(BaseModel):
@@ -106,7 +181,7 @@ class ChecklistItem(BaseModel):
 
     orderindex: Optional[int] = None
 
-    assignee: Optional[Assignee]
+    assignee: Optional[User]
 
 
 class Checklist(BaseModel):
@@ -123,19 +198,10 @@ class Checklist(BaseModel):
 
     items: Optional[List[ChecklistItem]] = None
 
-    def add_item(self, client_instance, name: str, assignee: Optional[str] = None):
-        return client_instance.create_checklist_item(
-            self.id, name=name, assignee=assignee
-        )
 
-
-class Checklists(BaseModel):
-    checklist: Checklist
-
-    def build_checklist(self):
-        final_checklist = Checklists(**self)
-
-        return final_checklist.checklist
+class Checklists(BaseModelList[Checklist]):
+    def create_item(self, json_obj: dict[str, Any]) -> Checklist:
+        return Checklist(**json_obj)
 
 
 class Attachment(BaseModel):
@@ -152,38 +218,6 @@ class Attachment(BaseModel):
     thumbnail_large: str
     url: str
 
-    def build_attachment(self):
-        return Attachment(**self)
-
-
-class User(BaseModel):
-    id: Optional[str] = None
-    username: Optional[str] = None
-    initials: Optional[str] = None
-    email: Optional[str] = None
-    color: Optional[str] = None
-
-    profilePicture: Optional[str] = None
-
-    role: Optional[int] = None
-
-    custom_role: Optional[None] = None
-
-    last_active: Optional[str] = None
-
-    date_joined: Optional[str] = None
-
-    date_invited: Optional[str] = None
-
-
-class AssignedBy(BaseModel):
-    id: Optional[str] = None
-    username: Optional[str] = None
-    initials: Optional[str] = None
-    email: Optional[str] = None
-    color: Optional[str] = None
-    profile_picture: Optional[str] = None
-
 
 class CommentComment(BaseModel):
     text: Optional[str] = None
@@ -192,41 +226,26 @@ class CommentComment(BaseModel):
 class Comment(BaseModel):
     id: Optional[str] = None
 
-    comment: Optional[List[CommentComment]] = None
+    comment: Optional[list[CommentComment]] = None
 
     comment_text: Optional[str] = None
 
-    user: Optional[AssignedBy] = None
+    user: Optional[User] = None
 
     resolved: Optional[bool] = None
 
-    assignee: Optional[AssignedBy] = None
+    assignee: Optional[User] = None
 
-    assigned_by: Optional[AssignedBy] = None
+    assigned_by: Optional[User] = None
 
-    reactions: Optional[List[Any]] = None
+    reactions: Optional[list[Any]] = None
     date: Optional[str] = None
     hist_id: Optional[str] = None
 
-    def build_comment(self):
-        return Comment(**self)
 
-
-class Comments(BaseModel):
-    comments: Optional[List[Comment]] = None
-
-    def __iter__(self):
-        return iter(self.comments)
-
-    def build_comments(self):
-        return Comments(**self)
-
-
-class Creator(BaseModel):
-    id: Optional[int] = None
-    username: Optional[str] = None
-    color: Optional[str] = None
-    profile_picture: Optional[str] = None
+class Comments(BaseModelList[Comment]):
+    def create_item(self, json_obj: dict[str, Any]) -> Comment:
+        return Comment(**json_obj)
 
 
 class Option(BaseModel):
@@ -246,25 +265,11 @@ class TypeConfig(BaseModel):
 
     new_drop_down: Optional[bool]
 
-    options: Optional[List[Option]]
+    options: Optional[list[Option]]
 
     include_guests: Optional[bool]
 
     include_team_members: Optional[bool]
-
-
-class CustomItems:
-    enabled: Optional[bool] = None
-
-
-class DueDates(BaseModel):
-    enabled: Optional[bool] = None
-
-    start_date: Optional[bool] = None
-
-    remap_due_dates: Optional[bool] = None
-
-    remap_closed_due_date: Optional[bool] = None
 
 
 class CustomField(BaseModel):
@@ -281,132 +286,6 @@ class CustomField(BaseModel):
     value: Optional[Any] = None
 
     required: Optional[bool] = None
-
-
-class TimeTracking(BaseModel):
-    enabled: bool = False
-
-    harvest: bool = False
-
-    rollup: bool = False
-
-
-class Sprints(BaseModel):
-    enabled: bool = False
-
-
-class Points(BaseModel):
-    enabled: bool = False
-
-
-class Zoom(BaseModel):
-    enabled: bool = False
-
-
-class Milestones(BaseModel):
-    enabled: bool = False
-
-
-class Emails(BaseModel):
-    enabled: bool = False
-
-class MultipleAssignees(BaseModel):
-    enabled: bool = False
-
-
-class TagsStatus(BaseModel):
-    enabled: bool = False
-
-
-class CustomFieldsStatus(BaseModel):
-    enabled: bool = False
-
-
-class DependencyWarning(BaseModel):
-    enabled: bool = False
-
-
-class TimeEstimateStatus(BaseModel):
-    enabled: bool = False
-
-
-class RemapDependenciesStatus(BaseModel):
-    enabled: bool = False
-
-
-class ChecklistsStatus(BaseModel):
-    enabled: bool = False
-
-
-class PortfoliosStatus(BaseModel):
-    enabled: bool = False
-
-
-class Features(BaseModel):
-    due_dates: Optional[DueDates] = None
-
-    multiple_assignees: Optional[MultipleAssignees] = None
-
-    sprints: Optional[Sprints] = None
-
-    start_date: bool = False
-
-    remap_due_dates: bool = False
-
-    remap_closed_due_date: bool = False
-
-    time_tracking: Optional[TimeTracking]
-
-    tags: Optional[TagsStatus]
-
-    time_estimates: Optional[TimeEstimateStatus]
-
-    checklists: Optional[ChecklistsStatus]
-
-    custom_fields: Optional[CustomFieldsStatus]
-
-    remap_dependencies: Optional[RemapDependenciesStatus]
-
-    dependency_warning: Optional[DependencyWarning] = None
-
-    portfolios: Optional[PortfoliosStatus]
-
-    points: Optional[Points] = None
-
-    custom_items: Optional[CustomItems] = None
-
-    zoom: Optional[Zoom] = None
-
-    milestones: Optional[Milestones] = None
-
-    emails: Optional[Emails] = None
-
-    class Config:
-        validate_assignment = True
-
-    @validator("time_tracking", pre=True, always=True)
-    def set_tt(cls, time_tracking):
-        return time_tracking or {"enabled": False}
-
-    @validator("custom_fields", pre=True, always=True)
-    def set_cf(cls, custom_fields):
-        return custom_fields or {"enabled": False}
-
-    @validator("tags", pre=True, always=True)
-    def set_tags(cls, tags):
-        return tags or {"enabled": False}
-
-    @validator("multiple_assignees", pre=True, always=True)
-    def set_ma(cls, multiple_assignees):
-        return multiple_assignees or {"enabled": False}
-
-    @validator("checklists", pre=True, always=True)
-    def set_checklists(cls, checklists):
-        return checklists or {"enabled": False}
-
-    @validator("portfolios", pre=True, always=True)
-    def set_portfolios(cls, portfolios):
-        return portfolios or {"enabled": False}
 
 
 class SpaceFeatures(BaseModel):
@@ -447,7 +326,7 @@ class SpaceFeatures(BaseModel):
     emails: bool = False
 
     @property
-    def all_features(self):
+    def all_features(self) -> dict[str, Any]:
         return {
             "due_dates": {
                 "enabled": self.due_dates,
@@ -467,78 +346,10 @@ class SpaceFeatures(BaseModel):
         }
 
 
-class Space(BaseModel):
-    id: Optional[str] = None
-
-    name: Optional[str] = None
-
-    access: Optional[bool] = None
-
-    features: Optional[Features]
-
-    multiple_assignees: Optional[bool] = None
-
-    private: Optional[bool] = False
-
-    statuses: Optional[List[Status]] = None
-
-    archived: Optional[bool] = None
-
-    def build_space(self):
-        return Space(**self)
-
-
-class Spaces(BaseModel):
-    spaces: Optional[List[Space]] = None
-
-    def __iter__(self):
-        return iter(self.spaces)
-
-    def build_spaces(self):
-        return Spaces(**self)
-
-
-class Folder(BaseModel):
-    id: Optional[str] = None
-    name: Optional[str] = None
-
-    orderindex: Optional[int] = None
-
-    override_statuses: bool = False
-
-    hidden: bool = False
-
-    space: Optional[Space] = None
-
-    task_count: Optional[int] = None
-
-    lists: List[SingleList] = []
-
-    def build_folder(self):
-        return Folder(**self)
-
-    def delete(self, client_instance):
-        model = "folder/"
-
-        deleted_folder_status = client_instance._delete_request(model, self.id)
-
-
-class Folders(BaseModel):
-    folders: Optional[List[Folder]] = None
-
-    def build_folders(self):
-        return Folders(**self)
-
-
 class ClickupList(BaseModel):
     id: Optional[str] = None
 
-
-# class Folder(BaseModel):
-
-#     id: Optional[str] = None
-
-
+# Reference: https://developer.clickup.com/reference/gettask
 class Task(BaseModel):
     id: Optional[str] = None
     custom_id: Optional[str] = None
@@ -554,9 +365,9 @@ class Task(BaseModel):
     date_updated: Optional[str] = None
     date_closed: Optional[str] = None
 
-    creator: Optional[Creator] = None
+    creator: Optional[User] = None
 
-    assignees: Optional[List[Assignee]] = None
+    assignees: Optional[list[User]] = None
 
     task_checklists: Optional[List[Any]] = Field(None, alias="checklists")
 
@@ -575,92 +386,26 @@ class Task(BaseModel):
 
     folder: Optional[Folder] = None
 
-    space: Optional[Folder] = None
+    space: Optional[Space] = None
     url: Optional[str] = ""
 
-    def build_task(self):
-        return Task(**self)
 
-    def delete(self, client_instance):
-        client_instance.delete_task(self, self.id)
-
-    def upload_attachment(self, client_instance, file_path: str):
-        return client_instance.upload_attachment(self.id, file_path)
-
-    def update(
-        self,
-        client_instance,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        status: Optional[str] = None,
-        priority: Any = None,
-        time_estimate: Optional[int] = None,
-        archived: Optional[bool] = None,
-        add_assignees: Optional[List[str]] = None,
-        remove_assignees: Optional[List[int]] = None,
-    ):
-        return client_instance.update_task(
-            self.id,
-            name,
-            description,
-            status,
-            priority,
-            time_estimate,
-            archived,
-            add_assignees,
-            remove_assignees,
-        )
-
-    def add_comment(
-        self,
-        client_instance,
-        comment_text: str,
-        assignee: Optional[str] = None,
-        notify_all: bool = True,
-    ):
-        return client_instance.create_task_comment(
-            self.id, comment_text, assignee, notify_all
-        )
-
-    def get_comments(self, client_instance):
-        return client_instance.get_task_comments(self.id)
-
-
-class Tasks(BaseModel):
-    tasks: Optional[List[Task]] = None
-
-    def __iter__(self):
-        return iter(self.tasks)
-
-    def build_tasks(self):
-        return Tasks(**self)
-
-
-class InvitedBy(BaseModel):
-    id: Optional[str] = None
-    username: Optional[str] = None
-    color: Optional[str] = None
-    email: Optional[str] = None
-    initials: Optional[str] = None
-    profile_picture: None = None
+class Tasks(BaseModelList[Task]):
+    def create_item(self, json_obj: dict[str, Any]) -> Task:
+        return Task(**json_obj)
 
 
 class Member(BaseModel):
     user: User
-
-    invited_by: Optional[InvitedBy] = None
-
-
-class Members(BaseModel):
-    members: Optional[List[User]] = None
-
-    def __iter__(self):
-        return iter(self.members)
-
-    def build_members(self):
-        return Members(**self)
+    invited_by: Optional[User] = None
 
 
+class Members(BaseModelList[User]):
+    def create_item(self, json_obj: dict[str, Any]) -> User:
+        return User(**json_obj)
+
+
+# Reference: https://developer.clickup.com/reference/getauthorizedteams
 class Team(BaseModel):
     id: Optional[str] = None
     name: Optional[str] = None
@@ -671,14 +416,9 @@ class Team(BaseModel):
     members: Optional[List[Member]] = None
 
 
-class Teams(BaseModel):
-    teams: Optional[List[Team]] = None
-
-    def __iter__(self):
-        return iter(self.teams)
-
-    def build_teams(self):
-        return Teams(**self)
+class Teams(BaseModelList[Team]):
+    def create_item(self, json_obj: dict[str, Any]) -> Team:
+        return Team(**json_obj)
 
 
 class Goal(BaseModel):
@@ -705,35 +445,17 @@ class Goal(BaseModel):
 
     owners: Optional[List[User]] = None
 
-    key_results: Optional[List[Any]] = None
+    key_results: Optional[list[Any]] = None
     percent_completed: Optional[int] = None
 
-    history: Optional[List[Any]] = None
+    history: Optional[list[Any]] = None
 
     pretty_url: Optional[str] = None
 
-    def build_goal(self):
-        return Goal(**self)
 
-
-class Goals(BaseModel):
-    goal: Goal
-
-    def build_goals(self):
-        built_goal = Goals(**self)
-
-        return built_goal.goal
-
-
-class GoalsList(BaseModel):
-    goals: Optional[List[Goal]] = None
-    folders: Optional[List[Folder]] = None
-
-    def __iter__(self):
-        return iter(self.goals)
-
-    def build_goals(self):
-        return GoalsList(**self)
+class Goals(BaseModelList[Goal]):
+    def create_item(self, json_obj: dict[str, Any]) -> Goal:
+        return Goal(**json_obj)
 
 
 class Tag(BaseModel):
@@ -743,42 +465,20 @@ class Tag(BaseModel):
 
     tag_bg: Optional[str] = None
 
-    def build_tag(self):
-        return Tag(**self)
 
-
-class Tags(BaseModel):
-    tags: Optional[List[Tag]] = None
-
-    def __iter__(self):
-        return iter(self.tags)
-
-    def build_tags(self):
-        return Tags(**self)
+class Tags(BaseModelList[Tag]):
+    def create_item(self, json_obj: dict[str, Any]) -> Tag:
+        return Tag(**json_obj)
 
 
 class Shared(BaseModel):
-    tasks: Optional[List[Tasks]]
-
-    lists: Optional[List[SingleList]]
-
-    folders: Optional[List[Folder]]
-
-    def build_shared(self):
-        return Shared(**self)
-
-    def __iter__(self):
-        return iter(self.shared)
+    tasks: Optional[list[Task]]
+    lists: Optional[list[dict[str, Any]]]
+    folders: Optional[list[Folder]]
 
 
 class SharedHierarchy(BaseModel):
     shared: Shared
-
-    def build_shared(self):
-        return SharedHierarchy(**self)
-
-    def __iter__(self):
-        return iter(self.shared)
 
 
 class TimeTrackingData(BaseModel):
@@ -791,29 +491,14 @@ class TimeTrackingData(BaseModel):
     end: str = ""
     duration: Optional[int] = None
     description: str = ""
-    tags: Optional[List[Tag]] = None
+    tags: Optional[list[Tag]] = None
     source: str = ""
     at: str = ""
 
-    def build_data(self):
-        return TimeTrackingData(**self)
-
 
 class TimeTrackingDataList(BaseModel):
-    data: Optional[List[TimeTrackingData]] = None
-
-    def build_data(self):
-        return TimeTrackingDataList(**self)
-
-    def __iter__(self):
-        return iter(self.data)
+    items: list[TimeTrackingData] = Field([], alias="data")
 
 
 class TimeTrackingDataSingle(BaseModel):
     data: Optional[TimeTrackingData] = None
-
-    def build_data(self):
-        return TimeTrackingDataSingle(**self)
-
-    def __iter__(self):
-        return iter(self.data)

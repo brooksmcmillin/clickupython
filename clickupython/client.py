@@ -1,7 +1,6 @@
 import requests
 import urllib
 import urllib.parse
-from urllib.parse import urlparse
 import os
 import json
 import ntpath
@@ -9,7 +8,7 @@ from typing import Any, List, Optional
 from time import sleep
 from datetime import datetime
 
-from clickupython.helpers.timefuncs import fuzzy_time_to_seconds, fuzzy_time_to_unix
+from clickupython.helpers.timefuncs import fuzzy_time_to_unix
 from clickupython.helpers import formatting
 from clickupython import models
 from clickupython import exceptions
@@ -29,7 +28,7 @@ class ClickUpClient:
         retry_rate_limited_requests: bool = False,
         rate_limit_buffer_wait_time: int = 5,
         start_rate_limit_remaining: int = 100,
-        start_rate_limit_reset: float = datetime.now().timestamp()
+        start_rate_limit_reset: float = datetime.now().timestamp(),
     ):
         self.api_url = api_url
         self.accesstoken = accesstoken
@@ -40,13 +39,17 @@ class ClickUpClient:
         self.rate_limit_remaining = start_rate_limit_remaining
         self.rate_limit_reset = start_rate_limit_reset
         self.rate_limit_buffer_wait_time = rate_limit_buffer_wait_time
-        self.retry_rate_limited_requests= retry_rate_limited_requests
+        self.retry_rate_limited_requests = retry_rate_limited_requests
 
-    def __parse_response_rate_limit_headers(self, response : requests.Response):
-        self.rate_limit_remaining = int(response.headers.get("x-ratelimit-remaining") or "0")
-        self.rate_limit_reset = float(response.headers.get("x-ratelimit-reset") or "0.0")
+    def __parse_response_rate_limit_headers(self, response: requests.Response) -> None:
+        self.rate_limit_remaining = int(
+            response.headers.get("x-ratelimit-remaining") or "0"
+        )
+        self.rate_limit_reset = float(
+            response.headers.get("x-ratelimit-reset") or "0.0"
+        )
 
-    def __check_rate_limit(self):
+    def __check_rate_limit(self) -> None:
         if self.rate_limit_remaining <= 1:
             resume_time = datetime.fromtimestamp(
                 self.rate_limit_reset + self.rate_limit_buffer_wait_time
@@ -57,7 +60,7 @@ class ClickUpClient:
 
     # Generates headers for use in GET, POST, DELETE, PUT requests
 
-    def __headers(self, file_upload: bool = False):
+    def __headers(self, file_upload: bool = False) -> dict[str, str]:
         """Internal method to generate headers for HTTP requests. Generates headers for use in GET, POST, DELETE and PUT requests.
 
         Returns:
@@ -73,7 +76,7 @@ class ClickUpClient:
             }
         )
 
-    def __get_request(self, model, *additionalpath) -> dict[str, Any]:
+    def __get_request(self, model: str, *additionalpath: str) -> dict[str, Any]:
         """Performs a Get request to the ClickUp API"""
         path = formatting.url_join(API_URL, model, *additionalpath)
 
@@ -81,7 +84,7 @@ class ClickUpClient:
 
         response = requests.get(path, headers=self.__headers())
         self.request_count += 1
-        response_json = response.json()
+        response_json: dict[str, Any] = response.json()
 
         self.__parse_response_rate_limit_headers(response)
 
@@ -98,14 +101,17 @@ class ClickUpClient:
         if response.ok:
             return response_json
 
-        raise exceptions.ClickupClientError(
-                "Unknown Error", response.status_code
-            )
+        raise exceptions.ClickupClientError("Unknown Error", response.status_code)
 
     # Performs a Post request to the ClickUp API
     def __post_request(
-        self, model, data, upload_files=None, file_upload=False, *additionalpath
-    ):
+        self,
+        model: str,
+        data: dict[str, Any],
+        *additionalpath: str,
+        upload_files: Any = None,
+        file_upload: bool = False,
+    ) -> dict[str, Any]:
 
         path = formatting.url_join(API_URL, model, *additionalpath)
         if data:
@@ -118,7 +124,7 @@ class ClickUpClient:
                 response = requests.post(path, headers=self.__headers(), data=data)
 
                 self.request_count += 1
-            response_json = response.json()
+            response_json: dict[str, Any] = response.json()
 
             if response.status_code in [401, 400, 500, 404]:
                 raise exceptions.ClickupClientError(
@@ -136,12 +142,16 @@ class ClickUpClient:
             if response.ok:
                 return response_json
 
+        raise exceptions.ClickupClientError("Unknown Error", response.status_code)
+
     # Performs a Put request to the ClickUp API
-    def __put_request(self, model, data, *additionalpath):
+    def __put_request(
+        self, model: str, data: dict[str, Any], *additionalpath: str
+    ) -> dict[str, Any]:
         path = formatting.url_join(API_URL, model, *additionalpath)
         response = requests.put(path, headers=self.__headers(), data=data)
         self.request_count += 1
-        response_json = response.json()
+        response_json: dict[str, Any] = response.json()
         if response.status_code in [401, 400]:
             raise exceptions.ClickupClientError(
                 response_json["err"], response.status_code
@@ -149,13 +159,15 @@ class ClickUpClient:
         if response.ok:
             return response_json
 
+        raise exceptions.ClickupClientError("Unknown Error", response.status_code)
+
     # Performs a Delete request to the ClickUp API
-    def __delete_request(self, model, *additionalpath):
+    def __delete_request(self, model: str, *additionalpath: str) -> int:
         path = formatting.url_join(API_URL, model, *additionalpath)
         response = requests.delete(path, headers=self.__headers())
         self.request_count += 1
         try:
-            response_json = response.json()
+            response_json: dict[str, Any] = response.json()
         except:
             raise exceptions.ClickupClientError(
                 "Invalid Json response", response.status_code
@@ -168,7 +180,7 @@ class ClickUpClient:
             )
 
     # Lists
-    def get_list(self, list_id: str) -> models.SingleList:
+    def get_list(self, list_id: str) -> dict[str, Any]:
         """Fetches a single list item from a given list id and returns a List object.
 
         Args:
@@ -180,10 +192,9 @@ class ClickUpClient:
         model = "list/"
         fetched_list = self.__get_request(model, list_id)
 
-        return models.SingleList.build_list(models.SingleList(**fetched_list))
+        return fetched_list
 
-    
-    def get_folderless_lists(self, space_id: str) -> models.AllLists:
+    def get_folderless_lists(self, space_id: str) -> dict[str, Any]:
         """Fetches all folderless lists from a given space id and returns a list of List objects.
 
         Args:
@@ -194,10 +205,9 @@ class ClickUpClient:
         """
         model = "space/"
         fetched_lists = self.__get_request(model, space_id, "list")
-        return models.AllLists(**fetched_lists)  
-    
-    
-    def get_lists(self, folder_id: str) -> models.AllLists:
+        return fetched_lists
+
+    def get_lists(self, folder_id: str) -> dict[str, Any]:
         """Fetches all lists from a given folder id and returns a list of List objects.
 
         Args:
@@ -208,7 +218,7 @@ class ClickUpClient:
         """
         model = "folder/"
         fetched_lists = self.__get_request(model, folder_id)
-        return models.AllLists(**fetched_lists)  
+        return fetched_lists
 
     def create_list(
         self,
@@ -218,7 +228,7 @@ class ClickUpClient:
         due_date: str,
         priority: int,
         status: str,
-    ) -> models.SingleList:
+    ) -> dict[str, Any]:
         """Creates and returns a List object in a folder from a given folder ID.
 
         Args:
@@ -240,11 +250,11 @@ class ClickUpClient:
         }
         model = "folder/"
         created_list = self.__post_request(
-            model, json.dumps(data), None, False, folder_id, "list"
+            model, data, folder_id, "list", upload_files=None, file_upload=False
         )
         if created_list:
-            return models.SingleList.build_list(created_list)
-        
+            return created_list
+
         raise exceptions.ClickupClientError("Failed to Create List.", None)
 
     def create_folderless_list(
@@ -256,7 +266,7 @@ class ClickUpClient:
         priority: Optional[int] = None,
         assignee: Optional[str] = None,
         status: Optional[str] = None,
-    ) -> models.SingleList:
+    ) -> dict[str, Any]:
 
         arguments = {}
         arguments.update(vars())
@@ -264,15 +274,15 @@ class ClickUpClient:
         arguments.pop("arguments", None)
         arguments.pop("space_id", None)
 
-        final_dict = json.dumps({k: v for k, v in arguments.items() if v is not None})
+        final_dict = {k: v for k, v in arguments.items() if v is not None}
 
         model = "space/"
         created_list = self.__post_request(
-            model, final_dict, None, False, space_id, "list"
+            model, final_dict, space_id, "list", upload_files=None, file_upload=False
         )
         if created_list:
-            return models.SingleList.build_list(created_list)
-        
+            return created_list
+
         raise exceptions.ClickupClientError("Failed to Create Folderless List.", None)
 
     # //TODO Add unit tests
@@ -286,7 +296,7 @@ class ClickUpClient:
         priority: Optional[int] = None,
         assignee: Optional[str] = None,
         unset_status: Optional[bool] = None,
-    ) -> models.SingleList:
+    ) -> dict[str, Any]:
 
         if priority and priority not in range(1, 4):
             raise exceptions.ClickupClientError(
@@ -302,16 +312,15 @@ class ClickUpClient:
         arguments.pop("arguments", None)
         arguments.pop("list_id", None)
 
-        final_dict = json.dumps({k: v for k, v in arguments.items() if v is not None})
+        final_dict = {k: v for k, v in arguments.items() if v is not None}
         model = "list/"
         updated_list = self.__put_request(model, final_dict, list_id)
         if updated_list:
-            return models.SingleList.build_list(updated_list)
-        
+            return updated_list
+
         raise exceptions.ClickupClientError("Failed to Update List.", None)
 
     def delete_list(self, list_id: str) -> bool:
-
         """Deletes a list via a given list id.
 
         Returns:
@@ -336,9 +345,11 @@ class ClickUpClient:
             models.Task: Returns an object of type Task.
         """
         model = "list/"
-        task = self.__post_request(model, None, None, False, list_id, "task", task_id)
+        task = self.__post_request(
+            model, {}, list_id, "task", task_id, upload_files=None, file_upload=False
+        )
 
-        return task
+        return models.Task(**task)
 
     def remove_task_from_list(
         self,
@@ -372,8 +383,8 @@ class ClickUpClient:
         model = "folder/"
         fetched_folder = self.__get_request(model, folder_id)
         if fetched_folder:
-            return models.Folder(**fetched_folder)  
-        
+            return models.Folder(**fetched_folder)
+
         raise exceptions.ClickupClientError("Failed to Get Folder.", None)
 
     def get_folders(self, space_id: str) -> models.Folders:
@@ -388,10 +399,9 @@ class ClickUpClient:
         model = "space/"
         fetched_folders = self.__get_request(model, space_id, "folder")
         if fetched_folders:
-            return models.Folders(**fetched_folders)  
-        
+            return models.Folders(**fetched_folders)
+
         raise exceptions.ClickupClientError("Failed to Get Folders.", None)
-        
 
     def create_folder(self, space_id: str, name: str) -> models.Folder:
         """Creates and returns a Folder object in a space from a given space ID.
@@ -408,11 +418,11 @@ class ClickUpClient:
         }
         model = "space/"
         created_folder = self.__post_request(
-            model, json.dumps(data), None, False, space_id, "folder"
+            model, data, space_id, "folder", upload_files=None, file_upload=False
         )
         if created_folder:
-            return models.Folder.build_folder(created_folder)
-        
+            return models.Folder(**created_folder)
+
         raise exceptions.ClickupClientError("Failed to Create Folder.", None)
 
     def update_folder(self, folder_id: str, name: str) -> models.Folder:
@@ -429,10 +439,10 @@ class ClickUpClient:
             "name": name,
         }
         model = "folder/"
-        updated_folder = self.__put_request(model, json.dumps(data), folder_id)
+        updated_folder = self.__put_request(model, data, folder_id)
         if updated_folder:
-            return models.Folder.build_folder(updated_folder)
-        
+            return models.Folder(**updated_folder)
+
         raise exceptions.ClickupClientError("Failed to Update Folder.", None)
 
     def delete_folder(self, folder_id: str) -> bool:
@@ -464,15 +474,13 @@ class ClickUpClient:
                 data = {"filename": ntpath.basename(f.name)}
                 model = "task/" + task_id
                 uploaded_attachment = self.__post_request(
-                    model, data, files, True, "attachment"
+                    model, data, "attachment", upload_files=files, file_upload=True
                 )
 
                 if uploaded_attachment:
-                    final_attachment = models.Attachment.build_attachment(
-                        uploaded_attachment
-                    )
+                    final_attachment = models.Attachment(**uploaded_attachment)
                 return final_attachment
-            
+
         raise exceptions.ClickupClientError("Failed to Upload Attachment.", None)
 
     # // TODO Add "Include subtasks option"
@@ -487,10 +495,10 @@ class ClickUpClient:
         """
         model = "task/"
         fetched_task = self.__get_request(model, task_id)
-        final_task = models.Task(**fetched_task)  
+        final_task = models.Task(**fetched_task)
         if final_task:
             return final_task
-        
+
         raise exceptions.ClickupClientError("Failed to Get Task.", None)
 
     def get_team_tasks(
@@ -593,8 +601,8 @@ class ClickUpClient:
         model = "team/"
         fetched_tasks = self.__get_request(model, team_Id, joined_url)
         if fetched_tasks:
-            return models.Tasks(**fetched_tasks)  
-        
+            return models.Tasks(**fetched_tasks)
+
         raise exceptions.ClickupClientError("Failed to Get Team Tasks.", None)
 
     def get_tasks(
@@ -615,7 +623,6 @@ class ClickUpClient:
         date_updated_gt: Optional[str] = None,
         date_updated_lt: Optional[str] = None,
     ) -> models.Tasks:
-
         """The maximum number of tasks returned in this response is 100. When you are paging this request, you should check list limit
         against the length of each response to determine if you are on the last page.
 
@@ -696,9 +703,10 @@ class ClickUpClient:
 
         model = "list/"
         fetched_tasks = self.__get_request(model, list_id, joined_url)
+
         if fetched_tasks:
-            return models.Tasks(**fetched_tasks)  
-        
+            return models.Tasks(**fetched_tasks)
+
         raise exceptions.ClickupClientError("Failed to Get Tasks.", None)
 
     def create_task(
@@ -714,7 +722,6 @@ class ClickUpClient:
         start_date: Optional[str] = None,
         notify_all: bool = True,
     ) -> models.Task:
-
         """[summary]
 
         Args:
@@ -748,21 +755,21 @@ class ClickUpClient:
         arguments.pop("arguments", None)
         arguments.pop("list_id", None)
 
-        final_dict = json.dumps({k: v for k, v in arguments.items() if v is not None})
+        final_dict = {k: v for k, v in arguments.items() if v is not None}
 
         model = "list/"
         created_task = self.__post_request(
-            model, final_dict, None, False, list_id, "task"
+            model, final_dict, list_id, "task", upload_files=None, file_upload=False
         )
 
         if created_task:
-            return models.Task.build_task(created_task)
-        
+            return models.Task(**created_task)
+
         raise exceptions.ClickupClientError("Failed to Create Task.", None)
 
     def update_task(
         self,
-        task_id,
+        task_id: str,
         name: Optional[str] = None,
         description: Optional[str] = None,
         status: Optional[str] = None,
@@ -772,7 +779,6 @@ class ClickUpClient:
         add_assignees: Optional[List[str]] = None,
         remove_assignees: Optional[List[int]] = None,
     ) -> models.Task:
-
         """[summary]
 
         Args:
@@ -814,13 +820,13 @@ class ClickUpClient:
         elif remove_assignees:
             arguments.update({"assignees": {"rem": remove_assignees}})
 
-        final_dict = json.dumps({k: v for k, v in arguments.items() if v is not None})
+        final_dict = {k: v for k, v in arguments.items() if v is not None}
 
         model = "task/"
         updated_task = self.__put_request(model, final_dict, task_id)
         if updated_task:
-            return models.Task.build_task(updated_task)
-        
+            return models.Task(**updated_task)
+
         raise exceptions.ClickupClientError("Failed to Update List.", None)
 
     def delete_task(self, task_id: str) -> bool:
@@ -845,11 +851,7 @@ class ClickUpClient:
         """
         model = "task/"
         fetched_comments = self.__get_request(model, task_id, "comment")
-        final_comments = models.Comments(**fetched_comments)  
-        if final_comments:
-            return final_comments
-        
-        raise exceptions.ClickupClientError("Failed to Get Task Comments.", None)
+        return models.Comments(**fetched_comments)
 
     def get_list_comments(self, list_id: str) -> models.Comments:
         """Get all the comments for a list from a given list id.
@@ -862,10 +864,10 @@ class ClickUpClient:
         """
         model = "list/"
         fetched_comments = self.__get_request(model, list_id, "comment/")
-        final_comments = models.Comments(**fetched_comments)  
+        final_comments = models.Comments(**fetched_comments)
         if final_comments:
             return final_comments
-        
+
         raise exceptions.ClickupClientError("Failed to Get List Comments.", None)
 
     def get_chat_comments(self, view_id: str) -> models.Comments:
@@ -879,10 +881,10 @@ class ClickUpClient:
         """
         model = "view/"
         fetched_comments = self.__get_request(model, view_id, "comment/")
-        final_comments = models.Comments(**fetched_comments)  
+        final_comments = models.Comments(**fetched_comments)
         if final_comments:
             return final_comments
-        
+
         raise exceptions.ClickupClientError("Failed to Get Chat Comments.", None)
 
     def update_comment(
@@ -911,11 +913,11 @@ class ClickUpClient:
 
         model = "comment/"
 
-        final_dict = json.dumps({k: v for k, v in arguments.items() if v is not None})
+        final_dict = {k: v for k, v in arguments.items() if v is not None}
 
         updated_comment = self.__put_request(model, final_dict, comment_id)
 
-        return updated_comment
+        return models.Comment(**updated_comment)
 
     def delete_comment(self, comment_id: str) -> bool:
         """Deletes a comment via a given comment id.
@@ -956,19 +958,18 @@ class ClickUpClient:
 
         model = "task/"
 
-        final_dict = json.dumps({k: v for k, v in arguments.items() if v is not None})
+        final_dict = {k: v for k, v in arguments.items() if v is not None}
 
         created_comment = self.__post_request(
-            model, final_dict, None, False, task_id, "comment"
+            model, final_dict, task_id, "comment", upload_files=None, file_upload=False
         )
 
-        final_comment = models.Comment.build_comment(created_comment)
+        final_comment = models.Comment(**created_comment)
         if final_comment:
             return final_comment
-        
+
         raise exceptions.ClickupClientError("Failed to Create Task Comment.", None)
-        
-        
+
     def create_chat_comment(
         self,
         view_id: str,
@@ -993,16 +994,16 @@ class ClickUpClient:
 
         model = "view/"
 
-        final_dict = json.dumps({k: v for k, v in arguments.items() if v is not None})
+        final_dict = {k: v for k, v in arguments.items() if v is not None}
 
         created_comment = self.__post_request(
-            model, final_dict, None, False, view_id, "comment"
+            model, final_dict, view_id, "comment", upload_files=None, file_upload=False
         )
 
-        final_comment = models.Comment.build_comment(created_comment)
+        final_comment = models.Comment(**created_comment)
         if final_comment:
             return final_comment
-        
+
         raise exceptions.ClickupClientError("Failed to Create Chat Comment.", None)
 
     # Teams
@@ -1015,11 +1016,7 @@ class ClickUpClient:
         """
         model = "team"
         fetched_teams = self.__get_request(model)
-        final_teams = models.Teams(**fetched_teams)  
-        if final_teams:
-            return final_teams
-        
-        raise exceptions.ClickupClientError("Failed to Get Teams.", None)
+        return models.Teams(**fetched_teams)
 
     # Checklists
     def create_checklist(self, task_id: str, name: str) -> models.Checklist:
@@ -1038,9 +1035,9 @@ class ClickUpClient:
 
         model = "task/"
         created_checklist = self.__post_request(
-            model, json.dumps(data), None, False, task_id, "checklist"
+            model, data, task_id, "checklist", upload_files=None, file_upload=False
         )
-        return models.Checklists.build_checklist(created_checklist)
+        return models.Checklist(**created_checklist)
 
     def create_checklist_item(
         self, checklist_id: str, name: str, assignee: Optional[str] = None
@@ -1060,12 +1057,20 @@ class ClickUpClient:
         data = {"name": name, "assignee": assignee} if assignee else {"name": name}
         model = "checklist/"
         created_checklist = self.__post_request(
-            model, json.dumps(data), None, False, checklist_id, "checklist_item"
+            model,
+            data,
+            checklist_id,
+            "checklist_item",
+            upload_files=None,
+            file_upload=False,
         )
-        return models.Checklists.build_checklist(created_checklist)
+        return models.Checklist(**created_checklist)
 
     def update_checklist(
-        self, checklist_id: str, name: Optional[str] = None, position: Optional[int] = None
+        self,
+        checklist_id: str,
+        name: Optional[str] = None,
+        position: Optional[int] = None,
     ) -> models.Checklist:
         """update_checklist Updates a ClickUp checklist.
 
@@ -1080,7 +1085,7 @@ class ClickUpClient:
         if not name and not position:
             raise exceptions.ClickupClientError("Failed to Update Checklist.", None)
 
-        data: dict[str, str|int] = {}
+        data: dict[str, str | int] = {}
 
         if name:
             data.update({"name": name})
@@ -1088,10 +1093,10 @@ class ClickUpClient:
             data.update({"postition": position})
 
         model = "checklist/"
-        updated_checklist = self.__put_request(model, json.dumps(data), checklist_id)
+        updated_checklist = self.__put_request(model, data, checklist_id)
         if updated_checklist:
-            return models.Checklists.build_checklist(updated_checklist)
-        
+            return models.Checklist(**updated_checklist)
+
         raise exceptions.ClickupClientError("Failed to Update Checklist.", None)
 
     def delete_checklist(self, checklist_id: str) -> bool:
@@ -1147,16 +1152,16 @@ class ClickUpClient:
 
         model = "checklist/"
 
-        final_dict = json.dumps({k: v for k, v in arguments.items() if v is not None})
+        final_dict = {k: v for k, v in arguments.items() if v is not None}
 
         item_update = self.__put_request(
             model, final_dict, checklist_id, "checklist_item", checklist_item_id
         )
 
-        final_update = models.Checklists.build_checklist(item_update)
+        final_update = models.Checklist(**item_update)
         if final_update:
             return final_update
-        
+
         raise exceptions.ClickupClientError("Failed to Update Checklist Item.", None)
 
     # Members
@@ -1174,7 +1179,7 @@ class ClickUpClient:
         model = "task/"
 
         task_members = self.__get_request(model, task_id, "member")
-        return models.Members(**task_members)  
+        return models.Members(**task_members)
 
     def get_list_members(self, list_id: str) -> models.Members:
         """Get all members assigned to a specific list via a list id.
@@ -1188,13 +1193,13 @@ class ClickUpClient:
         model = "list/"
 
         task_members = self.__get_request(model, list_id, "member")
-        return models.Members(**task_members)  
+        return models.Members(**task_members)
 
     # Goals
 
     def create_goal(
         self,
-        team_id,
+        team_id: str,
         name: str,
         due_date: Optional[str] = None,
         description: Optional[str] = None,
@@ -1226,16 +1231,13 @@ class ClickUpClient:
         if multiple_owners and owners:
             arguments.update({"owners": owners})
 
-        final_dict = json.dumps({k: v for k, v in arguments.items() if v is not None})
+        final_dict = {k: v for k, v in arguments.items() if v is not None}
 
         model = "team/"
         created_goal = self.__post_request(
-            model, final_dict, None, False, team_id, "goal"
+            model, final_dict, team_id, "goal", upload_files=None, file_upload=False
         )
-        if created_goal:
-            return models.Goals.build_goals(created_goal)
-        
-        raise exceptions.ClickupClientError("Failed to Create Goal.", None)
+        return models.Goal(**created_goal)
 
     def update_goal(
         self,
@@ -1267,13 +1269,13 @@ class ClickUpClient:
         arguments.pop("arguments", None)
         arguments.pop("goal_id", None)
 
-        final_dict = json.dumps({k: v for k, v in arguments.items() if v is not None})
+        final_dict = {k: v for k, v in arguments.items() if v is not None}
 
         model = "goal/"
         updated_goal = self.__put_request(model, final_dict, goal_id)
         if updated_goal:
-            return models.Goals.build_goals(updated_goal)
-        
+            return models.Goal(**updated_goal)
+
         raise exceptions.ClickupClientError("Failed to Update Goal.", None)
 
     def delete_goal(self, goal_id: str) -> bool:
@@ -1298,13 +1300,13 @@ class ClickUpClient:
         """
         model = "goal/"
         fetched_goal = self.__get_request(model, goal_id)
-        final_goal = models.Goal(**fetched_goal)  
+        final_goal = models.Goal(**fetched_goal)
         if final_goal:
             return final_goal
-        
+
         raise exceptions.ClickupClientError("Failed to Get Goal.", None)
 
-    def get_goals(self, team_id: str, include_completed: bool = False) -> models.GoalsList:
+    def get_goals(self, team_id: str, include_completed: bool = False) -> models.Goals:
         """get_goals Returns a list of goals for a team via a given team id.
         Args:
             :team_id (str): The id of the team to fetch goals for.
@@ -1324,11 +1326,7 @@ class ClickUpClient:
                 model, team_id, "goal?include_completed=false"
             )
 
-        final_goals = models.GoalsList(**fetched_goals)  
-        if final_goals:
-            return final_goals
-        
-        raise exceptions.ClickupClientError("Failed to Get Goals.", None)
+        return models.Goals(**fetched_goals)
 
     # Tags
 
@@ -1345,16 +1343,16 @@ class ClickUpClient:
 
         fetched_tags = self.__get_request(model, space_id, "tag")
 
-        final_tags = models.Tags(**fetched_tags)  
+        final_tags = models.Tags(**fetched_tags)
 
         if final_tags:
             return final_tags
-        
+
         raise exceptions.ClickupClientError("Failed to Get Space Tags.", None)
 
     def create_space_tag(
         self,
-        space_id,
+        space_id: str,
         name: str,
     ) -> models.Tag:
         """Creates a tag to be utilized in a space.
@@ -1372,16 +1370,14 @@ class ClickUpClient:
         arguments.pop("arguments", None)
         arguments.pop("space_id", None)
 
-        final_dict = {k: v for k, v in arguments.items() if v is not None}
-        final_tag = json.dumps({"tag": final_dict})
+        final_dict = {"tag": {k: v for k, v in arguments.items() if v is not None}}
 
         model = "space/"
         created_tag = self.__post_request(
-            model, final_tag, None, False, space_id, "tag"
+            model, final_dict, space_id, "tag", upload_files=None, file_upload=False
         )
-        print(created_tag)
 
-        return created_tag
+        return models.Tag(**created_tag)
 
     # // TODO #34 Finalize update_tag function. API endpoint doesn't seem to do anything?
 
@@ -1404,10 +1400,12 @@ class ClickUpClient:
         self,
         task_id: str,
         tag_name: str,
-    ):
+    ) -> bool:
 
         model = "task/"
-        self.__post_request(model, None, None, False, task_id, "tag", tag_name)
+        self.__post_request(
+            model, {}, task_id, "tag", tag_name, upload_files=None, file_upload=False
+        )
 
         return True
 
@@ -1415,7 +1413,7 @@ class ClickUpClient:
         self,
         task_id: str,
         tag_name: str,
-    ):
+    ) -> bool:
         model = "task/"
         self.__delete_request(model, task_id, "tag", tag_name)
         return True
@@ -1435,40 +1433,36 @@ class ClickUpClient:
         Returns:
             :models.Space: Returns an object of type Space.
         """
-        final_dict = json.dumps(
-            {
-                "name": name,
-                "multiple_assignees": features.multiple_assignees,
-                "features": features.all_features(),
-            }
-        )
+        final_dict = {
+            "name": name,
+            "multiple_assignees": features.multiple_assignees,
+            "features": "",
+        }
 
         model = "team/"
         created_space = self.__post_request(
-            model, final_dict, None, False, team_id, "space"
+            model, final_dict, team_id, "space", upload_files=None, file_upload=False
         )
-        print(created_space)
         if created_space:
-            return models.Space.build_space(created_space)
-        
+            return models.Space(**created_space)
+
         raise exceptions.ClickupClientError("Failed to Create Space.", None)
 
-    def delete_space(self, space_id: str):
+    def delete_space(self, space_id: str) -> bool:
 
         model = "space/"
         self.__delete_request(model, space_id)
         return True
 
-    def get_space(self, space_id: str):
+    def get_space(self, space_id: str) -> models.Space:
 
         model = "space/"
 
         fetched_space = self.__get_request(model, space_id)
 
-        if fetched_space:
-            return models.Space(**fetched_space)
+        return models.Space(**fetched_space)
 
-    def get_spaces(self, team_id: str, archived: bool = False):
+    def get_spaces(self, team_id: str, archived: bool = False) -> models.Spaces:
 
         path = "space?archived=false"
 
@@ -1479,8 +1473,7 @@ class ClickUpClient:
 
         fetched_spaces = self.__get_request(model, team_id, path)
 
-        if fetched_spaces:
-            return models.Spaces(**fetched_spaces)
+        return models.Spaces(**fetched_spaces)
 
     # Shared Hierarchy
     # Returns all resources you have access to where you don't have access to its parent.
@@ -1499,7 +1492,6 @@ class ClickUpClient:
         """
         model = "team/"
         fetched_hierarchy = self.__get_request(model, team_id, "shared")
-        print(fetched_hierarchy)
         if fetched_hierarchy:
             return models.SharedHierarchy(**fetched_hierarchy)
 
@@ -1546,9 +1538,11 @@ class ClickUpClient:
         fetched_time_data = self.__get_request(model, team_id, joined_url)
 
         if fetched_time_data:
-            return models.TimeTrackingDataList(**fetched_time_data)   
-        
-        raise exceptions.ClickupClientError("Failed to Get Time Entries in Range.", None)
+            return models.TimeTrackingDataList(**fetched_time_data)
+
+        raise exceptions.ClickupClientError(
+            "Failed to Get Time Entries in Range.", None
+        )
 
     def get_single_time_entry(
         self, team_id: str, timer_id: str
@@ -1565,10 +1559,9 @@ class ClickUpClient:
 
         model = "team/"
         fetched_time_data = self.__get_request(model, team_id, "time_entries", timer_id)
-        print(fetched_time_data)
         if fetched_time_data:
-            return models.TimeTrackingDataSingle(**fetched_time_data)  
-        
+            return models.TimeTrackingDataSingle(**fetched_time_data)
+
         raise exceptions.ClickupClientError("Failed to Get Single Time Entry.", None)
 
     def start_timer(self, team_id: str, timer_id: str) -> models.TimeTrackingData:
@@ -1583,12 +1576,18 @@ class ClickUpClient:
         """
         model = "team/"
         fetched_time_data = self.__post_request(
-            model, None, None, False, team_id, "time_entries/start", timer_id
+            model,
+            {},
+            team_id,
+            "time_entries/start",
+            timer_id,
+            upload_files=None,
+            file_upload=False,
         )
 
         if fetched_time_data:
-            return models.TimeTrackingData(**fetched_time_data)  
-        
+            return models.TimeTrackingData(**fetched_time_data)
+
         raise exceptions.ClickupClientError("Failed to Start Timer.", None)
 
     def stop_timer(self, team_id: str) -> models.TimeTrackingData:
@@ -1602,10 +1601,15 @@ class ClickUpClient:
         """
         model = "team/"
         fetched_time_data = self.__post_request(
-            model, None, None, False, team_id, "time_entries/stop"
+            model,
+            {},
+            team_id,
+            "time_entries/stop",
+            upload_files=None,
+            file_upload=False,
         )
 
         if fetched_time_data:
-            return models.TimeTrackingData(**fetched_time_data)  
-        
+            return models.TimeTrackingData(**fetched_time_data)
+
         raise exceptions.ClickupClientError("Failed to Stop Timer.", None)

@@ -1,8 +1,5 @@
 import setuptools
 from typing import List
-import distutils.text_file
-from pathlib import Path
-
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -11,9 +8,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 def _parse_requirements(filename: str) -> List[str]:
     """Return requirements from requirements file."""
     # Ref: https://stackoverflow.com/a/42033122/
-    return distutils.text_file.TextFile(
-        filename=str(Path(__file__).with_name(filename))
-    ).readlines()
+    with open('requirements.txt') as f:
+        required = f.read().splitlines() 
+
+    return required
 
 
 setuptools.setup(
